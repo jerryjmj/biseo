@@ -339,7 +339,7 @@ function addRec(r) {
     if (!text) throw new Error('내용이 비었습니다');
     return append_(REC, {
       id: clean_(r.id) || Utilities.getUuid().slice(0, 8),
-      kind: ['슈가맨', '사업'].indexOf(r.kind) >= 0 ? r.kind : '일기',
+      kind: ['슈가맨', '사업', '한마디'].indexOf(r.kind) >= 0 ? r.kind : '일기',   // 한마디 = 브리핑 탭에서 별표한 말
       date: isDate_(r.date) ? r.date : today_(),
       time: clean_(r.time, 5) || Utilities.formatDate(new Date(), TZ, 'HH:mm'),
       mood: clean_(r.mood, 8),

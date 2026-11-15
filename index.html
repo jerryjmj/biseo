@@ -123,6 +123,9 @@ h1{font-size:28px;font-weight:800;margin:2px 0 14px;letter-spacing:-.03em}
 .bone{background:var(--accent);color:#fff;border-radius:var(--r);padding:14px 16px;margin-top:10px;font-weight:700;font-size:16px;line-height:1.5}
 .bone small{display:block;font-size:12px;opacity:.8;font-weight:700;margin-bottom:2px}
 .bword{background:var(--card);border-radius:var(--r);padding:22px 20px;text-align:center;font-size:18px;font-weight:700;line-height:1.65;word-break:keep-all}
+.bwrap{position:relative}
+.star{position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:22px;color:var(--faint)}
+.star.on{color:#E0A100}
 .bword:before{content:'“';display:block;font-size:40px;line-height:.8;color:var(--accent);opacity:.5}
 .bweek{font-size:14.5px;color:var(--sub);padding:3px 0;line-height:1.5}
 .notice{background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:11px 14px;font-weight:700;font-size:15px;margin-bottom:12px}
@@ -291,7 +294,7 @@ const I = {
 
 /* ===== 상태 ===== */
 let TODAY = toKey(new Date());
-const S = { pending: 0, evFresh: {}, tab: 'cal', calSel: null, calMonth: null, cals: null, calOpen: false, mode: 'day', anchor: TODAY, tasks: [], goals: [], recs: [], ideas: { top: [], inbox: [], fin: [], at: '', err: '' }, ev: {}, evLoading: {}, fold: { done: true, next: true, idea: true }, loadedAt: 0, sg: null, sgLoading: false, sgErr: '', diaryDays: 14, brief: null };
+const S = { pending: 0, evFresh: {}, tab: 'cal', calSel: null, calMonth: null, cals: null, calOpen: false, mode: 'day', anchor: TODAY, tasks: [], goals: [], recs: [], ideas: { top: [], inbox: [], fin: [], at: '', err: '' }, ev: {}, evLoading: {}, fold: { done: true, next: true, idea: true, words: true }, loadedAt: 0, sg: null, sgLoading: false, sgErr: '', diaryDays: 14, brief: null };
 const C = { key: null, ctx: null, due: null, tag: '회사' };
 const D = { mood: '', kind: '일기', date: null };
 let E = null, keepFocus = null, undoFn = null, toastTimer = null;
@@ -510,7 +513,15 @@ function viewBrief() {
   }
   // 4. 힘이 되는 말 한마디
   h += sec('4. 오늘의 한마디', '');
-  h += b.word ? `<div class="bword">${esc(b.word)}</div>` : card(`<div class="empty">아침 7시 브리핑과 함께 도착합니다</div>`);
+  const saved = S.recs.filter(r => r.kind === '한마디').sort((x, y) => (x.date + x.time) < (y.date + y.time) ? 1 : -1);
+  if (b.word) {
+    const on = saved.some(r => r.date === b.date && r.text === b.word);
+    h += `<div class="bwrap"><div class="bword">${esc(b.word)}</div>
+      <button class="star ${on ? 'on' : ''}" data-act="wstar" aria-label="별표">${on ? '★' : '☆'}</button></div>`;
+  } else h += card(`<div class="empty">아침 7시 브리핑과 함께 도착합니다</div>`);
+  if (saved.length) h += `<div style="margin-top:12px">` + fold('words', '★ 모아 둔 한마디', saved.length, saved.map(r =>
+    `<div class="entry" style="cursor:default"><div class="tm">${md(r.date)}</div><div class="tx">${esc(r.text)}</div>
+     <button class="mini" style="color:#E0A100;background:var(--bg)" data-act="wdel" data-id="${r.id}" aria-label="별표 해제">★</button></div>`).join('')) + `</div>`;
   if (b.created && b.date) h += `<div class="faint" style="text-align:center;font-size:12.5px;margin-top:14px">${md(b.date)} ${esc(b.created)} 작성</div>`;
   return h;
 }
@@ -883,6 +894,19 @@ function delIdea(id) {
   run('deleteIdea', id).catch(fail);
   toast('던진 아이디어를 지웠습니다', () => { S.ideas.inbox.push(item); render(); run('addIdea', item).catch(fail); });
 }
+function starWord() {
+  const b = S.brief || {}; if (!b.word) return;
+  const hit = S.recs.find(r => r.kind === '한마디' && r.date === b.date && r.text === b.word);
+  if (hit) { unstarWord(hit.id); return; }
+  addRec('한마디', b.word, '', b.date); render();
+  toast('한마디를 모아 두었습니다');
+}
+function unstarWord(id) {
+  const i = S.recs.findIndex(r => r.id === id); if (i < 0) return;
+  const [item] = S.recs.splice(i, 1); render();
+  run('deleteRec', id).catch(fail);
+  toast('별표를 해제했습니다', () => { S.recs.push(item); render(); run('addRec', item).catch(fail); });
+}
 function addMemo() {
   const el = $('#min'); const text = el.value.trim();
   if (!text) { el.focus(); return; }
@@ -1006,6 +1030,8 @@ document.addEventListener('click', e => {
     case 'edel': deleteEdit(); break;
     case 'close': closeSheet(); break;
     case 'sgreload': loadSugar(true); break;
+    case 'wstar': starWord(); break;
+    case 'wdel': unstarWord(id); break;
     case 'undo': if (undoFn) { const f = undoFn; undoFn = null; f(); } $('#toast').classList.remove('show'); break;
     case 'reload': boot(); break;
     case 'setup': showSetup(); break;
@@ -1031,7 +1057,7 @@ document.addEventListener('visibilitychange', () => {
   if (toKey(new Date()) !== TODAY || Date.now() - S.loadedAt > 60000) { S.evFresh = {}; S.sgFresh = false; boot(); }
 });
 
-const APP_VER = 'v1.1';
+const APP_VER = 'v1.2';
 (function init() {
   // 연결 링크(#api=…&k=…)로 열었으면 저장하고 주소에서 지움
   const h = new URLSearchParams(location.hash.slice(1));
