@@ -1,5 +1,5 @@
 /**
- * 대표님 개인 비서 — 데이터 서버 v1.0 (Google Apps Script, 독립 프로젝트 '비서 API')
+ * 대표님 개인 비서 — 데이터 서버 v1.1 (Google Apps Script, 독립 프로젝트 '비서 API')
  *
  * 설치형 앱(https://jerryjmj.github.io/biseo/)이 이 서버와 데이터를 주고받습니다.
  * 화면은 GitHub에, 데이터는 지금처럼 '비서_DB' 구글시트에 있습니다.
@@ -22,7 +22,8 @@ const API = {
   addRec: (r) => addRec(r), updateRec: (id, p) => updateRec(id, p), deleteRec: (id) => deleteRec(id),
   addIdea: (i) => addIdea(i), deleteIdea: (id) => deleteIdea(id),
   addIdeaDone: (d) => addIdeaDone(d), deleteIdeaDone: (id) => deleteIdeaDone(id),
-  ping: () => ({ ok: true, at: now_() })
+  briefing: () => brief_(),
+  ping: () => ({ ok: true, at: now_(), ver: 'v1.1' })
 };
 
 function json_(o) {
@@ -104,6 +105,7 @@ const IDEA_DONE = {
   labels: ['id', 'No', '제목', '요청', '상태']
 };
 const TOP_FILE = '비서_아이디어TOP.csv'; // 매일 아침 Claude가 아이디어 뱅크에서 골라 만들어 두는 파일
+const BRIEF_FILE = '비서_브리핑.json';     // 매일 아침 7시 통합 브리핑이 만들어 두는 파일(오늘의 3가지·한마디)
 const REC = {
   name: '기록',
   keys: ['id', 'kind', 'date', 'time', 'mood', 'text', 'created'],
@@ -204,7 +206,31 @@ function load() {
   if (finDone.length) locked_(() => finDone.forEach(id => update_(IDEA_DONE, id, { status: '반영됨' })));
   fin = fin.filter(r => r.status === '대기' && finDone.indexOf(r.id) < 0);
   const items = top.items.filter(x => !fin.some(r => r.title === x.title));
-  return { tasks: rows_(TASK), goals: goals, recs: rows_(REC), ideas: { top: items, at: top.at, err: top.err || '', inbox: inbox, fin: fin } };
+  return { tasks: rows_(TASK), goals: goals, recs: rows_(REC), ideas: { top: items, at: top.at, err: top.err || '', inbox: inbox, fin: fin }, brief: brief_() };
+}
+
+/** 아침 브리핑 파일 읽기 — 가장 최근 것. 형식이 틀려도 앱이 멈추지 않도록 필요한 칸만 골라 돌려줍니다 */
+function brief_() {
+  try {
+    const it = DriveApp.getFilesByName(BRIEF_FILE);
+    let f = null;
+    while (it.hasNext()) {
+      const x = it.next();
+      if (x.isTrashed()) continue;
+      if (!f || x.getLastUpdated() > f.getLastUpdated()) f = x;
+    }
+    if (!f) return { date: '' };
+    const o = JSON.parse(f.getBlob().getDataAsString('UTF-8').replace(/^\uFEFF/, ''));
+    const s = (v, n) => clean_(v, n || 300);
+    return {
+      date: isDate_(o.date) ? o.date : '',
+      created: s(o.created, 10) || Utilities.formatDate(f.getLastUpdated(), TZ, 'HH:mm'),
+      weekly: (Array.isArray(o.weekly) ? o.weekly : []).slice(0, 3).map(x => s(x)),
+      three: (Array.isArray(o.three) ? o.three : []).slice(0, 3).map(x => ({ title: s(x.title, 120), why: s(x.why), action: s(x.action), kind: s(x.kind, 10) })),
+      one: s(o.one, 200),
+      word: s(o.word, 300)
+    };
+  } catch (e) { return { date: '', err: String(e.message || e) }; }
 }
 
 /** 아이디어 TOP 파일 읽기 — 같은 이름 파일이 여럿이면 가장 최근 것 */
