@@ -107,6 +107,12 @@ h1{font-size:28px;font-weight:800;margin:2px 0 14px;letter-spacing:-.03em}
 .stat b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em}
 .stat b small{font-size:16px;color:var(--faint)}
 .stat span{font-size:13px;color:var(--sub);font-weight:600}
+.stat button.tile{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px;text-align:left;position:relative}
+.stat button.tile.open{outline:2px solid var(--accent)}
+.stat button.tile i{position:absolute;top:12px;right:12px;font-style:normal;color:var(--accent);font-size:13px;font-weight:700}
+.vgrp{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0 12px}
+.vroom{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:7px 11px;font-weight:800;font-size:15px}
+.vroom small{display:block;font-size:11.5px;font-weight:600;color:var(--sub)}
 .mrow{width:100%;display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line);font-weight:600;text-align:left}
 .mrow:first-child{border-top:0}
 .mrow span{color:var(--sub);font-size:14px;flex:none}
@@ -763,8 +769,9 @@ function viewSugar() {
     h += `<div class="stat">
       <div><b>${g.active}</b><span>비상주 계약</span></div>
       <div><b>${g.occupied}<small> / ${g.total}</small></b><span>상주 사용 중</span></div>
-      <div><b>${g.vacant.length}</b><span>지금 팔 수 있는 호실</span></div>
+      <button class="tile ${S.vacOpen ? 'open' : ''}" data-act="vacopen"><i>${S.vacOpen ? '닫기 ▲' : '보기 ▼'}</i><b>${g.vacant.length}</b><span>지금 팔 수 있는 호실</span></button>
       <div><b>${g.cleanup}</b><span>정리중 (주소 증빙 대기)</span></div></div>`;
+    if (S.vacOpen) h += vacantHTML(g.vacant);
     if (g.over) {
       h += `<div class="alert"><div class="h">계약 만료 경과 ${g.over}건</div>
         ${g.overTop.map(x => `<div class="l">${esc(x.no)} ${esc(x.name)}<span>${-x.dday}일 경과</span></div>`).join('')}
@@ -798,6 +805,17 @@ function viewSugar() {
   h += card(memos.length ? memos.slice(0, 30).map(r => `<div class="entry" data-act="redit" data-id="${r.id}">
       <div class="tm">${md(r.date)}</div><div class="tx">${esc(r.text)}</div></div>`).join('') : `<div class="empty">메모가 없습니다</div>`);
   return h;
+}
+
+function vacantHTML(list) {
+  if (!list.length) return card(`<div class="empty">지금 팔 수 있는 호실이 없습니다</div>`);
+  const kinds = [...new Set(list.map(x => x.kind || '구분 없음'))]
+    .sort((a, b) => (a === '상주' ? 0 : a === '비상주' ? 1 : 2) - (b === '상주' ? 0 : b === '비상주' ? 1 : 2));
+  return card(kinds.map(k => {
+    const rs = list.filter(x => (x.kind || '구분 없음') === k);
+    return `<div class="dayhead" style="margin-top:10px"><span>${esc(k)}</span><span>${rs.length}실</span></div>
+      <div class="vgrp">${rs.map(x => `<div class="vroom">${esc(x.room)}${x.type ? `<small>${esc(x.type)}</small>` : ''}</div>`).join('')}</div>`;
+  }).join(''));
 }
 
 /* ===== 밀린 일 ===== */
@@ -1023,6 +1041,7 @@ document.addEventListener('click', e => {
     case 'close': closeSheet(); break;
     case 'sgreload': loadSugar(true); break;
     case 'wstar': starWord(); break;
+    case 'vacopen': S.vacOpen = !S.vacOpen; render(); break;
     case 'wdel': unstarWord(id); break;
     case 'undo': if (undoFn) { const f = undoFn; undoFn = null; f(); } $('#toast').classList.remove('show'); break;
     case 'reload': boot(); break;
@@ -1049,7 +1068,7 @@ document.addEventListener('visibilitychange', () => {
   if (toKey(new Date()) !== TODAY || Date.now() - S.loadedAt > 60000) { S.evFresh = {}; S.sgFresh = false; boot(); }
 });
 
-const APP_VER = 'v1.3';
+const APP_VER = 'v1.4';
 (function init() {
   // 연결 링크(#api=…&k=…)로 열었으면 저장하고 주소에서 지움
   const h = new URLSearchParams(location.hash.slice(1));
