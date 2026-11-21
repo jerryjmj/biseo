@@ -771,7 +771,7 @@ function viewSugar() {
       <div><b>${g.occupied}<small> / ${g.total}</small></b><span>상주 사용 중</span></div>
       <button class="tile ${S.vacOpen ? 'open' : ''}" data-act="vacopen"><i>${S.vacOpen ? '닫기 ▲' : '보기 ▼'}</i><b>${g.vacant.length}</b><span>지금 팔 수 있는 호실</span></button>
       <div><b>${g.cleanup}</b><span>정리중 (주소 증빙 대기)</span></div></div>`;
-    if (S.vacOpen) h += vacantHTML(g.vacant);
+    if (S.vacOpen) h += vacantHTML(g.vacant, g.leaving);
     if (g.over) {
       h += `<div class="alert"><div class="h">계약 만료 경과 ${g.over}건</div>
         ${g.overTop.map(x => `<div class="l">${esc(x.no)} ${esc(x.name)}<span>${-x.dday}일 경과</span></div>`).join('')}
@@ -807,15 +807,18 @@ function viewSugar() {
   return h;
 }
 
-function vacantHTML(list) {
-  if (!list.length) return card(`<div class="empty">지금 팔 수 있는 호실이 없습니다</div>`);
+function vacantHTML(list, leaving) {
+  const soon = (leaving || []).slice().sort((a, b) => (a.out || '9') < (b.out || '9') ? -1 : 1);
+  const soonHTML = soon.length ? `<div class="dayhead" style="margin-top:10px"><span>곧 비는 호실 · 상주 퇴실 예정</span><span>${soon.length}실</span></div>
+      <div class="vgrp">${soon.map(x => `<div class="vroom" style="background:var(--bg);color:var(--ink)">${esc(x.room)}<small>${x.out ? md(x.out) + ' 퇴실' : '퇴실일 미정'}</small></div>`).join('')}</div>` : '';
+  if (!list.length) return card(`<div class="empty">지금 팔 수 있는 호실이 없습니다</div>` + soonHTML);
   const kinds = [...new Set(list.map(x => x.kind || '구분 없음'))]
     .sort((a, b) => (a === '상주' ? 0 : a === '비상주' ? 1 : 2) - (b === '상주' ? 0 : b === '비상주' ? 1 : 2));
   return card(kinds.map(k => {
     const rs = list.filter(x => (x.kind || '구분 없음') === k);
     return `<div class="dayhead" style="margin-top:10px"><span>${esc(k)}</span><span>${rs.length}실</span></div>
-      <div class="vgrp">${rs.map(x => `<div class="vroom">${esc(x.room)}${x.type ? `<small>${esc(x.type)}</small>` : ''}</div>`).join('')}</div>`;
-  }).join(''));
+      <div class="vgrp">${rs.map(x => `<div class="vroom">${esc(x.room)}</div>`).join('')}</div>`;
+  }).join('') + soonHTML);
 }
 
 /* ===== 밀린 일 ===== */
@@ -1068,7 +1071,7 @@ document.addEventListener('visibilitychange', () => {
   if (toKey(new Date()) !== TODAY || Date.now() - S.loadedAt > 60000) { S.evFresh = {}; S.sgFresh = false; boot(); }
 });
 
-const APP_VER = 'v1.4';
+const APP_VER = 'v1.5';
 (function init() {
   // 연결 링크(#api=…&k=…)로 열었으면 저장하고 주소에서 지움
   const h = new URLSearchParams(location.hash.slice(1));
