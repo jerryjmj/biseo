@@ -863,9 +863,11 @@ function readInfo() {
   const days = new Set(logs.map(l => l.date));
   const doneSeq = b => new Set(logs.filter(l => l.book === b.id && l.min !== '1').map(l => Number(l.seq)));
   let book = null, next = null, finished = [];
+  const waiting = [];
   for (const b of rd.books || []) {
     const ds = doneSeq(b), nx = b.sessions.find(x => !ds.has(x.n));
     if (!nx) { finished.push(b); continue; }
+    if (b.hold) { waiting.push(b); continue; }
     if (!book) { book = b; next = nx; }
   }
   // 연속 기록 — 한 주(월~일)에 하루는 쉬어도 이어집니다
@@ -881,7 +883,7 @@ function readInfo() {
     passUsed = !!used[monOf(TODAY)];
   }
   const today = logs.filter(l => l.date === TODAY);
-  return { rd, logs, book, next, finished, streak, passUsed, total: days.size, today, doneSeq };
+  return { rd, logs, book, next, finished, waiting, streak, passUsed, total: days.size, today, doneSeq };
 }
 function readLevel(n) { let t = READ_LEVEL[0][1]; READ_LEVEL.forEach(([k, v]) => { if (n >= k) t = v; }); return t; }
 const rng = (b, x) => b.unit === '%' ? `${x.from}% → ${x.to}%` : `p.${x.from} → ${x.to}`;
@@ -889,6 +891,12 @@ function readCard() {
   const ri = readInfo();
   if (ri.rd.old) return sec('오늘의 독서', '') + `<div class="notice">독서노트를 쓰려면 데이터 서버(비서 API)를 v1.2로 새로 배포해 주세요</div>`;
   let h = sec('오늘의 독서', ri.streak ? `<span class="rfire">🔥 ${ri.streak}일째</span>` : '');
+  if (!ri.book && ri.waiting.length) {
+    return h + card(`<div class="faint" style="font-size:13px;padding-top:12px">읽을 책장 · 시작하면 내일 11시부터 알림이 갑니다</div>` + ri.waiting.map(b =>
+      `<div class="entry" style="cursor:default;align-items:center"><div class="tx"><b>${esc(b.title)}</b><div class="faint" style="font-size:13px">${b.unit === '%' ? 'e북' : '종이책'} · ${b.sessions.length}회차${b.note ? ' · ' + esc(b.note) : ''}</div></div>
+       <button class="mini" style="width:auto;padding:0 12px;background:var(--accent);color:#fff;font-weight:800" data-act="rstart" data-id="${esc(b.id)}">시작</button></div>`).join(''))
+      + (ri.logs.length ? `<button class="notice" style="display:block;width:100%;text-align:left" data-act="tab" data-v="read">독서노트 보기 →</button>` : '');
+  }
   if (!ri.book) {
     const msg = ri.finished.length ? `🎉 계획된 책을 모두 읽으셨습니다. 다음 책의 목차 사진을 Claude에게 보내 주세요.` : `읽을 책의 목차 사진을 Claude에게 보내 주시면 하루 분량을 짜 드립니다.`;
     return h + card(`<div class="empty">${msg}</div>`) + (ri.logs.length ? `<button class="notice" style="display:block;width:100%;text-align:left" data-act="tab" data-v="read">독서노트 보기 →</button>` : '');
@@ -1203,6 +1211,7 @@ document.addEventListener('click', e => {
     case 'rform': R.form = v; render(); setTimeout(() => { const el = $('#rnote'); if (el) el.focus(); }, 30); break;
     case 'rcancel': R.form = ''; render(); break;
     case 'rsave': saveRead(); break;
+    case 'rstart': { const b = S.read.books.find(x => x.id === id); if (b) { delete b.hold; render(); run('startBook', id).then(r => { if (r) { S.read = r; render(); } }).catch(fail); toast('『' + (b ? b.title : '') + '』 시작합니다'); } break; }
     case 'rdel': delRead(id); break;
     case 'vacopen': S.vacOpen = !S.vacOpen; render(); break;
     case 'wdel': unstarWord(id); break;
@@ -1231,7 +1240,7 @@ document.addEventListener('visibilitychange', () => {
   if (toKey(new Date()) !== TODAY || Date.now() - S.loadedAt > 60000) { S.evFresh = {}; S.sgFresh = false; boot(); }
 });
 
-const APP_VER = 'v1.6.1';
+const APP_VER = 'v1.7';
 (function init() {
   // 연결 링크(#api=…&k=…)로 열었으면 저장하고 주소에서 지움
   const h = new URLSearchParams(location.hash.slice(1));

@@ -1,5 +1,5 @@
 /**
- * 대표님 개인 비서 — 데이터 서버 v1.2 (Google Apps Script, 독립 프로젝트 '비서 API')
+ * 대표님 개인 비서 — 데이터 서버 v1.2 (독서노트·책 시작 포함) (Google Apps Script, 독립 프로젝트 '비서 API')
  *
  * 설치형 앱(https://jerryjmj.github.io/biseo/)이 이 서버와 데이터를 주고받습니다.
  * 화면은 GitHub에, 데이터는 지금처럼 '비서_DB' 구글시트에 있습니다.
@@ -23,7 +23,7 @@ const API = {
   addIdea: (i) => addIdea(i), deleteIdea: (id) => deleteIdea(id),
   addIdeaDone: (d) => addIdeaDone(d), deleteIdeaDone: (id) => deleteIdeaDone(id),
   briefing: () => brief_(),
-  addRead: (r) => addRead(r), updateRead: (id, p) => updateRead(id, p), deleteRead: (id) => deleteRead(id),
+  startBook: (id) => startBook(id), addRead: (r) => addRead(r), updateRead: (id, p) => updateRead(id, p), deleteRead: (id) => deleteRead(id),
   ping: () => ({ ok: true, at: now_(), ver: 'v1.2' })
 };
 
@@ -217,22 +217,39 @@ function load() {
 }
 
 /** 독서 — 읽기 계획 파일(가장 최근 것) + 독서노트 기록 */
+function planFile_() {
+  const it = DriveApp.getFilesByName(PLAN_FILE);
+  let f = null;
+  while (it.hasNext()) {
+    const x = it.next();
+    if (x.isTrashed()) continue;
+    if (!f || x.getLastUpdated() > f.getLastUpdated()) f = x;
+  }
+  return f;
+}
+/** 대기 중인 책을 '지금 읽는 책'으로 시작 — 계획 파일의 hold 표시만 지웁니다 */
+function startBook(id) {
+  return locked_(() => {
+    const f = planFile_();
+    if (!f) throw new Error('읽기 계획 파일이 없습니다');
+    const o = JSON.parse(f.getBlob().getDataAsString('UTF-8').replace(/^\uFEFF/, ''));
+    const b = (o.books || []).find(x => String(x.id) === String(id));
+    if (!b) throw new Error('책을 찾을 수 없습니다');
+    delete b.hold; b.started = today_();
+    f.setContent(JSON.stringify(o, null, 1));
+    return reading_();
+  });
+}
 function reading_() {
   let plan = { books: [] }, err = '';
   try {
-    const it = DriveApp.getFilesByName(PLAN_FILE);
-    let f = null;
-    while (it.hasNext()) {
-      const x = it.next();
-      if (x.isTrashed()) continue;
-      if (!f || x.getLastUpdated() > f.getLastUpdated()) f = x;
-    }
+    const f = planFile_();
     if (f) {
       const o = JSON.parse(f.getBlob().getDataAsString('UTF-8').replace(/^\uFEFF/, ''));
       const s = (v, n) => clean_(v, n || 200);
       plan.books = (Array.isArray(o.books) ? o.books : []).slice(0, 60).map(b => ({
         id: s(b.id, 40), title: s(b.title, 120), author: s(b.author, 60),
-        unit: b.unit === '%' ? '%' : '쪽', total: Number(b.total) || 0,
+        unit: b.unit === '%' ? '%' : '쪽', total: Number(b.total) || 0, hold: !!b.hold, note: s(b.note, 200),
         sessions: (Array.isArray(b.sessions) ? b.sessions : []).slice(0, 200).map((x, i) => ({
           n: Number(x.n) || i + 1, from: Number(x.from) || 0, to: Number(x.to) || 0,
           part: s(x.part, 120), q: s(x.q, 120)
