@@ -110,6 +110,34 @@ h1{font-size:28px;font-weight:800;margin:2px 0 14px;letter-spacing:-.03em}
 .stat button.tile{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px 16px;text-align:left;position:relative}
 .stat button.tile.open{outline:2px solid var(--accent)}
 .stat button.tile i{position:absolute;top:12px;right:12px;font-style:normal;color:var(--accent);font-size:13px;font-weight:700}
+.rcard{padding:16px 18px}
+.rbook{font-weight:800;font-size:17px;line-height:1.35}
+.rbook small{display:block;font-weight:600;font-size:12.5px;color:var(--sub);margin-top:2px}
+.rrange{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:10px 0 2px}
+.rpart{font-size:14px;color:var(--sub);font-weight:600}
+.rq{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:9px 12px;font-size:14.5px;font-weight:700;margin-top:10px;line-height:1.5}
+.rbar{height:8px;border-radius:8px;background:var(--bg);overflow:hidden;margin:12px 0 6px}
+.rbar i{display:block;height:100%;background:var(--accent);border-radius:8px}
+.rmeta{display:flex;justify-content:space-between;font-size:12.5px;color:var(--sub);font-weight:600}
+.rfire{display:inline-flex;align-items:center;gap:4px;background:#FFF1E6;color:#C2541D;border-radius:999px;padding:4px 10px;font-weight:800;font-size:13px}
+.rbtns{display:flex;gap:8px;margin-top:14px}
+.rbtns button{flex:1;border-radius:14px;padding:12px 0;font-weight:800;font-size:15px}
+.rgo{background:var(--accent);color:#fff}
+.rlite{background:var(--bg);color:var(--sub)}
+.rform textarea{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font-size:16.5px;resize:none;outline:0;background:var(--bg);min-height:96px;margin-top:12px;line-height:1.55}
+.rform textarea:focus{border-color:var(--accent)}
+.rcnt{text-align:right;font-size:12.5px;color:var(--faint);font-weight:700;margin-top:4px}
+.rcnt.over{color:var(--warn)}
+.rform input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font-size:16px;outline:0;background:var(--bg);margin-top:10px}
+.rdone{display:flex;gap:10px;align-items:flex-start;margin-top:12px;background:var(--bg);border-radius:14px;padding:12px}
+.rdone .ck{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none;font-weight:800}
+.rbadges{display:flex;flex-wrap:wrap;gap:8px;padding:8px 0 12px}
+.rbadge{border-radius:14px;padding:8px 10px;text-align:center;min-width:72px;background:var(--bg);color:var(--faint);font-size:12px;font-weight:700}
+.rbadge b{display:block;font-size:22px;filter:grayscale(1);opacity:.45}
+.rbadge.on{background:#FFF7E0;color:#8A6200}.rbadge.on b{filter:none;opacity:1}
+.rdots{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:6px 0 12px}
+.rdots span{aspect-ratio:1;border-radius:9px;background:var(--bg);display:grid;place-items:center;font-size:11.5px;color:var(--faint);font-weight:700}
+.rdots span.r{background:var(--accent);color:#fff}.rdots span.m{background:var(--accent-soft);color:var(--accent)}.rdots span.t{outline:2px solid var(--accent)}
 .vgrp{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0 12px}
 .vroom{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:7px 11px;font-weight:800;font-size:15px}
 .vroom small{display:block;font-size:11.5px;font-weight:600;color:var(--sub)}
@@ -297,7 +325,8 @@ const I = {
 
 /* ===== 상태 ===== */
 let TODAY = toKey(new Date());
-const S = { pending: 0, evFresh: {}, tab: 'cal', calSel: null, calMonth: null, cals: null, calOpen: false, mode: 'day', anchor: TODAY, tasks: [], goals: [], recs: [], ideas: { top: [], inbox: [], fin: [], at: '', err: '' }, ev: {}, evLoading: {}, fold: { done: true, next: true, idea: true, words: true }, loadedAt: 0, sg: null, sgLoading: false, sgErr: '', diaryDays: 14, brief: null };
+const S = { pending: 0, evFresh: {}, tab: 'cal', calSel: null, calMonth: null, cals: null, calOpen: false, mode: 'day', anchor: TODAY, tasks: [], goals: [], recs: [], ideas: { top: [], inbox: [], fin: [], at: '', err: '' }, ev: {}, evLoading: {}, fold: { done: true, next: true, idea: true, words: true }, loadedAt: 0, sg: null, sgLoading: false, sgErr: '', diaryDays: 14, brief: null, read: { books: [], logs: [] } };
+const R = { form: '' };
 const C = { key: null, ctx: null, due: null, tag: '회사' };
 const D = { mood: '', kind: '일기', date: null };
 let E = null, keepFocus = null, undoFn = null, toastTimer = null;
@@ -308,6 +337,7 @@ function apply(r) {
   if (S.anchor === prev) S.anchor = TODAY;
   S.tasks = r.tasks || []; S.goals = r.goals || []; S.recs = r.recs || []; S.ideas = r.ideas || S.ideas;
   S.brief = 'brief' in r ? r.brief : (S.brief || { old: true });
+  S.read = r.reading ? r.reading : { books: [], logs: [], old: true };
 }
 /* 폰에 저장된 마지막 화면을 즉시 띄우고, 최신 데이터는 뒤에서 받아 바꿔 넣습니다 */
 let booting = false;
@@ -547,6 +577,7 @@ function viewToday() {
   h2 += sec('오늘 할 일', tod.length || '') + card(tod.length ? tod.map(t => taskHTML(t, { due: false })).join('')
     : `<div class="empty">${done.length ? '오늘 할 일을 모두 끝냈습니다 👏' : '아직 오늘 할 일이 없습니다'}</div>`);
   if (late.length) h2 += `<button class="notice" style="display:block;width:100%;text-align:left" data-act="tab" data-v="late">${LATE_DAYS}일 넘게 밀린 일 ${late.length}건 · 밀린 일 탭에서 보기 →</button>`;
+  h2 += readCard();
   h2 += briefParts(S.brief || {});
   if (done.length) h2 += fold('done', '오늘 끝낸 일', done.length, done.map(t => taskHTML(t)).join(''));
   if (next.length) {
@@ -821,6 +852,130 @@ function vacantHTML(list, leaving) {
   }).join('') + soonHTML);
 }
 
+/* ===== 독서 ===== */
+const READ_STREAK = [3, 7, 14, 30, 50, 100, 200, 365];
+const READ_DAYS = [1, 10, 30, 100, 200, 365];
+const READ_BOOKS = [1, 3, 5, 10, 20, 50];
+const READ_LEVEL = [[0, '첫 장을 펴는 중'], [7, '책 읽는 대표'], [30, '습관이 된 독서가'], [100, '100일의 독서가'], [200, '서재를 짓는 사람'], [365, '1년의 서재']];
+const monOf = k => { const d = fromKey(k); const w = (d.getDay() + 6) % 7; return addDays(k, -w); };
+function readInfo() {
+  const rd = S.read || { books: [], logs: [] }, logs = rd.logs || [];
+  const days = new Set(logs.map(l => l.date));
+  const doneSeq = b => new Set(logs.filter(l => l.book === b.id && l.min !== '1').map(l => Number(l.seq)));
+  let book = null, next = null, finished = [];
+  for (const b of rd.books || []) {
+    const ds = doneSeq(b), nx = b.sessions.find(x => !ds.has(x.n));
+    if (!nx) { finished.push(b); continue; }
+    if (!book) { book = b; next = nx; }
+  }
+  // 연속 기록 — 한 주(월~일)에 하루는 쉬어도 이어집니다
+  let streak = 0, passUsed = false;
+  if (days.size) {
+    const first = [...days].sort()[0], used = {};
+    let d = days.has(TODAY) ? TODAY : addDays(TODAY, -1);
+    while (d >= first) {
+      if (days.has(d)) streak++;
+      else { const wk = monOf(d); if (used[wk]) break; used[wk] = 1; }
+      d = addDays(d, -1);
+    }
+    passUsed = !!used[monOf(TODAY)];
+  }
+  const today = logs.filter(l => l.date === TODAY);
+  return { rd, logs, book, next, finished, streak, passUsed, total: days.size, today, doneSeq };
+}
+function readLevel(n) { let t = READ_LEVEL[0][1]; READ_LEVEL.forEach(([k, v]) => { if (n >= k) t = v; }); return t; }
+const rng = (b, x) => b.unit === '%' ? `${x.from}% → ${x.to}%` : `p.${x.from} → ${x.to}`;
+function readCard() {
+  const ri = readInfo();
+  if (ri.rd.old) return '';
+  let h = sec('오늘의 독서', ri.streak ? `<span class="rfire">🔥 ${ri.streak}일째</span>` : '');
+  if (!ri.book) {
+    const msg = ri.finished.length ? `🎉 계획된 책을 모두 읽으셨습니다. 다음 책의 목차 사진을 Claude에게 보내 주세요.` : `읽을 책의 목차 사진을 Claude에게 보내 주시면 하루 분량을 짜 드립니다.`;
+    return h + card(`<div class="empty">${msg}</div>`) + (ri.logs.length ? `<button class="notice" style="display:block;width:100%;text-align:left" data-act="tab" data-v="read">독서노트 보기 →</button>` : '');
+  }
+  const b = ri.book, x = ri.next, ds = ri.doneSeq(b), n = b.sessions.length, left = n - ds.size;
+  const pct = Math.round(ds.size / n * 100);
+  let inner = `<div class="rbook">${esc(b.title)}<small>${b.author ? esc(b.author) + ' · ' : ''}${b.unit === '%' ? 'e북' : '종이책'} · ${readLevel(ri.total)}</small></div>`;
+  const rec = ri.today[ri.today.length - 1];
+  if (rec) {
+    const sx = b.sessions.find(s => s.n === Number(rec.seq));
+    inner += `<div class="rdone"><div class="ck">✓</div><div style="flex:1;min-width:0"><b>${rec.min === '1' ? '오늘은 조금 읽었습니다 · 연속 기록 유지' : `오늘 ${rec.seq}회차 완료`}</b>
+      ${rec.note ? `<div style="margin-top:4px;line-height:1.5">${esc(rec.note)}</div>` : ''}</div>
+      <button class="mini" data-act="rdel" data-id="${rec.id}" aria-label="기록 지우기">${I.x || '✕'}</button></div>
+      <div class="rmeta" style="margin-top:10px"><span>내일 ${rng(b, x)}${x.part ? ' · ' + esc(x.part) : ''}</span></div>`;
+  } else if (R.form) {
+    const full = R.form === 'full';
+    inner += `<div class="rform">
+      <div class="rrange">${rng(b, x)}</div><div class="rpart">${x.n}회차${x.part ? ' · ' + esc(x.part) : ''}</div>
+      ${full ? '' : `<input id="runtil" inputmode="numeric" placeholder="어디까지 읽으셨나요? (${b.unit === '%' ? '%' : '쪽'}, 비워도 됩니다)">`}
+      <textarea id="rnote" maxlength="100" placeholder="${full ? '읽으면서 떠오른 생각을 자유롭게 (100자 이내)' : '한 줄 생각 (선택)'}"></textarea>
+      <div class="rcnt" id="rcnt">0 / 100</div>
+      <div class="rbtns"><button class="rlite" data-act="rcancel">취소</button><button class="rgo" data-act="rsave" data-v="${R.form}">${full ? '기록 완료' : '조금 읽음으로 기록'}</button></div></div>`;
+  } else {
+    inner += `<div class="rrange">${rng(b, x)}</div><div class="rpart">${x.n}회차 / ${n}${x.part ? ' · ' + esc(x.part) : ''}</div>
+      ${x.q ? `<div class="rq">💭 ${esc(x.q)}</div>` : ''}
+      <div class="rbtns"><button class="rlite" data-act="rform" data-v="min">조금만 읽었어요</button><button class="rgo" data-act="rform" data-v="full">다 읽었어요</button></div>`;
+  }
+  inner += `<div class="rbar"><i style="width:${pct}%"></i></div>
+    <div class="rmeta"><span>${pct}% · ${left}회차 남음</span><span>완독 예상 ${md(addDays(TODAY, left - (rec && rec.min !== '1' ? 0 : 1)))}</span></div>`;
+  if (!rec && ri.passUsed === false && ri.streak) inner += `<div class="faint" style="font-size:12.5px;margin-top:8px">이번 주 쉬는 날 1회가 남아 있습니다</div>`;
+  return h + `<div class="card rcard">${inner}</div>` +
+    `<button class="notice" style="display:block;width:100%;text-align:left" data-act="tab" data-v="read">📚 독서노트 · 배지 · 이번 달 기록 보기 →</button>`;
+}
+function saveRead() {
+  const ri = readInfo(); if (!ri.book) return;
+  const full = R.form === 'full', note = ($('#rnote') || {}).value || '';
+  if (full && !note.trim()) { $('#rnote').focus(); toast('한 줄 생각을 남겨 주세요'); return; }
+  const until = full ? String(ri.next.to) : String((($('#runtil') || {}).value || '').replace(/[^\d.]/g, '')).slice(0, 6);
+  const before = { streak: ri.streak, total: ri.total, books: ri.finished.length };
+  const r = { id: uid(), date: TODAY, book: ri.book.id, seq: String(full ? ri.next.n : 0), until, note: note.trim().slice(0, 100), min: full ? '' : '1', created: nowStr() };
+  S.read.logs.push(r); R.form = '';
+  run('addRead', { ...r, min: r.min === '1' }).catch(fail);
+  render();
+  const after = readInfo();
+  let msg = full ? '오늘 독서를 기록했습니다' : '조금이라도 읽으셨습니다 · 연속 기록 유지';
+  const hit = (arr, a, b) => arr.find(m => a < m && b >= m);
+  const bk = hit(READ_BOOKS, before.books, after.finished.length), st = hit(READ_STREAK, before.streak, after.streak), dy = hit(READ_DAYS, before.total, after.total);
+  if (bk) msg = `📖 완독! 지금까지 ${after.finished.length}권 — ${ri.book.title}`;
+  else if (st) msg = `🔥 ${st}일 연속 달성!`;
+  else if (dy) msg = `🏅 누적 ${dy}일째 독서`;
+  toast(msg);
+}
+function delRead(id) {
+  const i = S.read.logs.findIndex(l => l.id === id); if (i < 0) return;
+  const [it] = S.read.logs.splice(i, 1); render();
+  run('deleteRead', id).catch(fail);
+  toast('기록을 지웠습니다', () => { S.read.logs.push(it); render(); run('addRead', { ...it, min: it.min === '1' }).catch(fail); });
+}
+function viewRead() {
+  const ri = readInfo();
+  let h = `<button class="notice" style="display:inline-block;margin:0 0 6px" data-act="tab" data-v="today">← 오늘</button>
+    <div class="hello">${readLevel(ri.total)}</div><h1>독서노트</h1>
+    <div class="stat"><div><b>${ri.streak}<small> 일</small></b><span>🔥 연속 기록</span></div><div><b>${ri.total}<small> 일</small></b><span>누적 독서일</span></div>
+    <div><b>${ri.finished.length}<small> 권</small></b><span>완독</span></div><div><b>${ri.logs.filter(l => l.note).length}<small> 개</small></b><span>남긴 생각</span></div></div>`;
+  // 이번 달
+  const m0 = TODAY.slice(0, 8) + '01', days = new Set(ri.logs.filter(l => l.min !== '1').map(l => l.date)), mins = new Set(ri.logs.filter(l => l.min === '1').map(l => l.date));
+  const pad = (fromKey(m0).getDay() + 6) % 7; let cells = '<span style="background:none"></span>'.repeat(pad);
+  for (let k = m0; k.slice(0, 7) === m0.slice(0, 7); k = addDays(k, 1))
+    cells += `<span class="${days.has(k) ? 'r' : mins.has(k) ? 'm' : ''} ${k === TODAY ? 't' : ''}">${+k.slice(8)}</span>`;
+  h += sec(`${+m0.slice(5, 7)}월 독서 달력`, '') + card(`<div class="rdots">${'월화수목금토일'.split('').map(x => `<span style="background:none">${x}</span>`).join('')}${cells}</div>
+    <div class="faint" style="font-size:12.5px;padding-bottom:10px">진한 칸 = 그날 분량 완료 · 연한 칸 = 조금 읽은 날 · 한 주에 하루는 쉬어도 연속 기록이 이어집니다</div>`);
+  // 배지
+  const best = ri.streak;
+  const bd = [...READ_STREAK.slice(0, 6).map(n => ['🔥', `${n}일 연속`, best >= n]), ...READ_BOOKS.slice(0, 4).map(n => ['📚', `완독 ${n}권`, ri.finished.length >= n]), ...READ_DAYS.slice(2, 5).map(n => ['🏅', `누적 ${n}일`, ri.total >= n])];
+  h += sec('배지', bd.filter(x => x[2]).length + ' / ' + bd.length) + card(`<div class="rbadges">${bd.map(([e, t, on]) => `<div class="rbadge ${on ? 'on' : ''}"><b>${e}</b>${t}</div>`).join('')}</div>`);
+  // 책별 생각
+  const byBook = {}; ri.logs.filter(l => l.note).forEach(l => (byBook[l.book] = byBook[l.book] || []).push(l));
+  const books = (ri.rd.books || []).filter(b => byBook[b.id]);
+  if (!books.length) h += sec('남긴 생각', '') + card(`<div class="empty">아직 남긴 생각이 없습니다</div>`);
+  books.forEach(b => {
+    const L = byBook[b.id].sort((x, y) => x.date < y.date ? 1 : -1);
+    const fin = ri.finished.includes(b);
+    h += sec(`${fin ? '✓ ' : ''}${esc(b.title)}`, L.length) + card(L.map(l => `<div class="entry" style="cursor:default"><div class="tm">${md(l.date)}${l.min === '1' ? '' : `<br>${l.seq}회`}</div><div class="tx">${esc(l.note)}</div></div>`).join(''));
+  });
+  return h;
+}
+
 /* ===== 밀린 일 ===== */
 function viewLate() {
   const late = lateTasks();
@@ -832,15 +987,15 @@ function viewLate() {
 }
 
 /* ===== 그리기 ===== */
-const KEEP = ['cin', 'gin', 'din', 'min', 'iin'];
+const KEEP = ['cin', 'gin', 'din', 'min', 'iin', 'rnote', 'runtil'];
 function render() {
   if (S.setupOpen) return;
-  if (S.loadedAt) LS.set('data', { tasks: S.tasks, goals: S.goals, recs: S.recs, ideas: S.ideas, brief: S.brief });
+  if (S.loadedAt) LS.set('data', { tasks: S.tasks, goals: S.goals, recs: S.recs, ideas: S.ideas, brief: S.brief, reading: S.read });
   const keep = KEEP.map(id => { const el = $('#' + id); return el ? { id, v: el.value, f: document.activeElement === el } : null; }).filter(Boolean);
   const wasOpen = $('#comp') && $('#comp').classList.contains('open');
-  const V = { cal: viewCal, brief: viewToday, today: viewToday, plan: viewPlan, diary: viewDiary, sugar: viewSugar, late: viewLate };
+  const V = { cal: viewCal, brief: viewToday, read: viewRead, today: viewToday, plan: viewPlan, diary: viewDiary, sugar: viewSugar, late: viewLate };
   $('#app').innerHTML = V[S.tab]();
-  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('sel', b.dataset.v === S.tab));
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('sel', b.dataset.v === (S.tab === 'read' ? 'today' : S.tab)));
   const n = lateTasks().length, bd = $('#lateBadge');
   bd.textContent = n; bd.classList.toggle('on', n > 0);
   keep.forEach(k => { const el = $('#' + k.id); if (el) { el.value = k.v; if (k.f) el.focus(); } });
@@ -850,6 +1005,7 @@ function render() {
 }
 function syncButtons() {
   ['cin', 'gin', 'min', 'iin'].forEach(id => { const el = $('#' + id); if (el) el.nextElementSibling.classList.toggle('on', !!el.value.trim()); });
+  const rn = $('#rnote'); if (rn) { const c = $('#rcnt'); c.textContent = rn.value.length + ' / 100'; c.classList.toggle('over', rn.value.length > 100); }
   const d = $('#din'); if (d) { $('.save').classList.toggle('on', !!d.value.trim()); d.style.height = 'auto'; d.style.height = Math.max(110, d.scrollHeight) + 'px'; }
 }
 
@@ -1044,6 +1200,10 @@ document.addEventListener('click', e => {
     case 'close': closeSheet(); break;
     case 'sgreload': loadSugar(true); break;
     case 'wstar': starWord(); break;
+    case 'rform': R.form = v; render(); setTimeout(() => { const el = $('#rnote'); if (el) el.focus(); }, 30); break;
+    case 'rcancel': R.form = ''; render(); break;
+    case 'rsave': saveRead(); break;
+    case 'rdel': delRead(id); break;
     case 'vacopen': S.vacOpen = !S.vacOpen; render(); break;
     case 'wdel': unstarWord(id); break;
     case 'undo': if (undoFn) { const f = undoFn; undoFn = null; f(); } $('#toast').classList.remove('show'); break;
@@ -1071,7 +1231,7 @@ document.addEventListener('visibilitychange', () => {
   if (toKey(new Date()) !== TODAY || Date.now() - S.loadedAt > 60000) { S.evFresh = {}; S.sgFresh = false; boot(); }
 });
 
-const APP_VER = 'v1.5';
+const APP_VER = 'v1.6';
 (function init() {
   // 연결 링크(#api=…&k=…)로 열었으면 저장하고 주소에서 지움
   const h = new URLSearchParams(location.hash.slice(1));

@@ -1,5 +1,5 @@
 /**
- * 대표님 개인 비서 — 데이터 서버 v1.1 (Google Apps Script, 독립 프로젝트 '비서 API')
+ * 대표님 개인 비서 — 데이터 서버 v1.2 (Google Apps Script, 독립 프로젝트 '비서 API')
  *
  * 설치형 앱(https://jerryjmj.github.io/biseo/)이 이 서버와 데이터를 주고받습니다.
  * 화면은 GitHub에, 데이터는 지금처럼 '비서_DB' 구글시트에 있습니다.
@@ -23,7 +23,8 @@ const API = {
   addIdea: (i) => addIdea(i), deleteIdea: (id) => deleteIdea(id),
   addIdeaDone: (d) => addIdeaDone(d), deleteIdeaDone: (id) => deleteIdeaDone(id),
   briefing: () => brief_(),
-  ping: () => ({ ok: true, at: now_(), ver: 'v1.1' })
+  addRead: (r) => addRead(r), updateRead: (id, p) => updateRead(id, p), deleteRead: (id) => deleteRead(id),
+  ping: () => ({ ok: true, at: now_(), ver: 'v1.2' })
 };
 
 function json_(o) {
@@ -58,7 +59,7 @@ function doGet() { return json_({ ok: false, error: '비서 API — 앱에서만
 /** 설치 때 1회 실행: 권한 승인 + 비밀 열쇠 생성(실행 로그에 표시) */
 function setup() {
   const ss = ss_();
-  sheet_(TASK); sheet_(GOAL); sheet_(REC); sheet_(IDEA); sheet_(IDEA_DONE);
+  sheet_(TASK); sheet_(GOAL); sheet_(REC); sheet_(IDEA); sheet_(IDEA_DONE); sheet_(READ);
   DriveApp.getRootFolder();
   CalendarApp.getDefaultCalendar();
   SpreadsheetApp.openById(SUGAR_ID).getName();
@@ -106,6 +107,12 @@ const IDEA_DONE = {
 };
 const TOP_FILE = '비서_아이디어TOP.csv'; // 매일 아침 Claude가 아이디어 뱅크에서 골라 만들어 두는 파일
 const BRIEF_FILE = '비서_브리핑.json';     // 매일 아침 7시 통합 브리핑이 만들어 두는 파일(오늘의 3가지·한마디)
+const PLAN_FILE = '비서_독서계획.json';  // 대표님이 보낸 목차 사진으로 Claude가 짜 둔 책별 읽기 회차
+const READ = {
+  name: '독서노트',
+  keys: ['id', 'date', 'book', 'seq', 'until', 'note', 'min', 'created'],
+  labels: ['id', '날짜', '책', '회차', '읽은 곳', '생각', '최소', '생성']
+};
 const REC = {
   name: '기록',
   keys: ['id', 'kind', 'date', 'time', 'mood', 'text', 'created'],
@@ -206,8 +213,51 @@ function load() {
   if (finDone.length) locked_(() => finDone.forEach(id => update_(IDEA_DONE, id, { status: '반영됨' })));
   fin = fin.filter(r => r.status === '대기' && finDone.indexOf(r.id) < 0);
   const items = top.items.filter(x => !fin.some(r => r.title === x.title));
-  return { tasks: rows_(TASK), goals: goals, recs: rows_(REC), ideas: { top: items, at: top.at, err: top.err || '', inbox: inbox, fin: fin }, brief: brief_() };
+  return { tasks: rows_(TASK), goals: goals, recs: rows_(REC), ideas: { top: items, at: top.at, err: top.err || '', inbox: inbox, fin: fin }, brief: brief_(), reading: reading_() };
 }
+
+/** 독서 — 읽기 계획 파일(가장 최근 것) + 독서노트 기록 */
+function reading_() {
+  let plan = { books: [] }, err = '';
+  try {
+    const it = DriveApp.getFilesByName(PLAN_FILE);
+    let f = null;
+    while (it.hasNext()) {
+      const x = it.next();
+      if (x.isTrashed()) continue;
+      if (!f || x.getLastUpdated() > f.getLastUpdated()) f = x;
+    }
+    if (f) {
+      const o = JSON.parse(f.getBlob().getDataAsString('UTF-8').replace(/^\uFEFF/, ''));
+      const s = (v, n) => clean_(v, n || 200);
+      plan.books = (Array.isArray(o.books) ? o.books : []).slice(0, 60).map(b => ({
+        id: s(b.id, 40), title: s(b.title, 120), author: s(b.author, 60),
+        unit: b.unit === '%' ? '%' : '쪽', total: Number(b.total) || 0,
+        sessions: (Array.isArray(b.sessions) ? b.sessions : []).slice(0, 200).map((x, i) => ({
+          n: Number(x.n) || i + 1, from: Number(x.from) || 0, to: Number(x.to) || 0,
+          part: s(x.part, 120), q: s(x.q, 120)
+        }))
+      })).filter(b => b.id && b.sessions.length);
+    }
+  } catch (e) { err = String(e.message || e); }
+  return { books: plan.books, logs: rows_(READ), err: err };
+}
+function addRead(r) {
+  const o = {
+    id: Utilities.getUuid(), date: isDate_(r.date) ? r.date : today_(), book: clean_(r.book, 40),
+    seq: String(Number(r.seq) || 0), until: clean_(r.until, 10), note: clean_(r.note, 100),
+    min: r.min ? '1' : '', created: now_()
+  };
+  if (r.id) o.id = clean_(r.id, 60);
+  return locked_(() => append_(READ, o));
+}
+function updateRead(id, p) {
+  const q = {};
+  if (p.note != null) q.note = clean_(p.note, 100);
+  if (p.until != null) q.until = clean_(p.until, 10);
+  return locked_(() => update_(READ, id, q));
+}
+function deleteRead(id) { return locked_(() => update_(READ, id, null)); }
 
 /** 아침 브리핑 파일 읽기 — 가장 최근 것. 형식이 틀려도 앱이 멈추지 않도록 필요한 칸만 골라 돌려줍니다 */
 function brief_() {

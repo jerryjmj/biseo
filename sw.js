@@ -1,6 +1,6 @@
 /* 비서 앱 서비스워커 — 화면 파일을 폰에 저장해 두고 즉시 띄운 뒤, 뒤에서 새 버전을 받아 둡니다(다음 실행 때 반영).
  * 데이터 요청(script.google.com)은 건드리지 않습니다. */
-const CACHE = 'biseo-shell-v6';
+const CACHE = 'biseo-shell-v7';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
