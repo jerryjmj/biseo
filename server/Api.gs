@@ -262,7 +262,7 @@ function reading_() {
 function addRead(r) {
   const o = {
     id: Utilities.getUuid(), date: isDate_(r.date) ? r.date : today_(), book: clean_(r.book, 40),
-    seq: String(Number(r.seq) || 0), until: clean_(r.until, 10), note: clean_(r.note, 100),
+    seq: String(Number(r.seq) || 0), until: clean_(r.until, 10), note: clean_(r.note, 200),
     min: r.min ? '1' : '', created: now_()
   };
   if (r.id) o.id = clean_(r.id, 60);
@@ -270,7 +270,7 @@ function addRead(r) {
 }
 function updateRead(id, p) {
   const q = {};
-  if (p.note != null) q.note = clean_(p.note, 100);
+  if (p.note != null) q.note = clean_(p.note, 200);
   if (p.until != null) q.until = clean_(p.until, 10);
   return locked_(() => update_(READ, id, q));
 }

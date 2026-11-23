@@ -124,7 +124,7 @@ h1{font-size:28px;font-weight:800;margin:2px 0 14px;letter-spacing:-.03em}
 .rbtns button{flex:1;border-radius:14px;padding:12px 0;font-weight:800;font-size:15px}
 .rgo{background:var(--accent);color:#fff}
 .rlite{background:var(--bg);color:var(--sub)}
-.rform textarea{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font-size:16.5px;resize:none;outline:0;background:var(--bg);min-height:96px;margin-top:12px;line-height:1.55}
+.rform textarea{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font-size:16.5px;resize:none;outline:0;background:var(--bg);min-height:140px;margin-top:12px;line-height:1.55}
 .rform textarea:focus{border-color:var(--accent)}
 .rcnt{text-align:right;font-size:12.5px;color:var(--faint);font-weight:700;margin-top:4px}
 .rcnt.over{color:var(--warn)}
@@ -916,8 +916,8 @@ function readCard() {
     inner += `<div class="rform">
       <div class="rrange">${rng(b, x)}</div><div class="rpart">${x.n}회차${x.part ? ' · ' + esc(x.part) : ''}</div>
       ${full ? '' : `<input id="runtil" inputmode="numeric" placeholder="어디까지 읽으셨나요? (${b.unit === '%' ? '%' : '쪽'}, 비워도 됩니다)">`}
-      <textarea id="rnote" maxlength="100" placeholder="${full ? '읽으면서 떠오른 생각을 자유롭게 (100자 이내)' : '한 줄 생각 (선택)'}"></textarea>
-      <div class="rcnt" id="rcnt">0 / 100</div>
+      <textarea id="rnote" maxlength="200" placeholder="${full ? '읽으면서 떠오른 생각을 자유롭게 (200자 이내)' : '한 줄 생각 (선택)'}"></textarea>
+      <div class="rcnt" id="rcnt">0 / 200</div>
       <div class="rbtns"><button class="rlite" data-act="rcancel">취소</button><button class="rgo" data-act="rsave" data-v="${R.form}">${full ? '기록 완료' : '조금 읽음으로 기록'}</button></div></div>`;
   } else {
     inner += `<div class="rrange">${rng(b, x)}</div><div class="rpart">${x.n}회차 / ${n}${x.part ? ' · ' + esc(x.part) : ''}</div>
@@ -936,7 +936,7 @@ function saveRead() {
   if (full && !note.trim()) { $('#rnote').focus(); toast('한 줄 생각을 남겨 주세요'); return; }
   const until = full ? String(ri.next.to) : String((($('#runtil') || {}).value || '').replace(/[^\d.]/g, '')).slice(0, 6);
   const before = { streak: ri.streak, total: ri.total, books: ri.finished.length };
-  const r = { id: uid(), date: TODAY, book: ri.book.id, seq: String(full ? ri.next.n : 0), until, note: note.trim().slice(0, 100), min: full ? '' : '1', created: nowStr() };
+  const r = { id: uid(), date: TODAY, book: ri.book.id, seq: String(full ? ri.next.n : 0), until, note: note.trim().slice(0, 200), min: full ? '' : '1', created: nowStr() };
   S.read.logs.push(r); R.form = '';
   run('addRead', { ...r, min: r.min === '1' }).catch(fail);
   render();
@@ -1013,7 +1013,7 @@ function render() {
 }
 function syncButtons() {
   ['cin', 'gin', 'min', 'iin'].forEach(id => { const el = $('#' + id); if (el) el.nextElementSibling.classList.toggle('on', !!el.value.trim()); });
-  const rn = $('#rnote'); if (rn) { const c = $('#rcnt'); c.textContent = rn.value.length + ' / 100'; c.classList.toggle('over', rn.value.length > 100); }
+  const rn = $('#rnote'); if (rn) { const c = $('#rcnt'); c.textContent = rn.value.length + ' / 200'; c.classList.toggle('over', rn.value.length > 200); }
   const d = $('#din'); if (d) { $('.save').classList.toggle('on', !!d.value.trim()); d.style.height = 'auto'; d.style.height = Math.max(110, d.scrollHeight) + 'px'; }
 }
 
@@ -1240,7 +1240,7 @@ document.addEventListener('visibilitychange', () => {
   if (toKey(new Date()) !== TODAY || Date.now() - S.loadedAt > 60000) { S.evFresh = {}; S.sgFresh = false; boot(); }
 });
 
-const APP_VER = 'v1.7';
+const APP_VER = 'v1.7.1';
 (function init() {
   // 연결 링크(#api=…&k=…)로 열었으면 저장하고 주소에서 지움
   const h = new URLSearchParams(location.hash.slice(1));
